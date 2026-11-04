@@ -36,20 +36,22 @@
     `}`,
   ].join("\n");
 
+  // Banners (a full-width row) only for previews and retractions. Older or superseded
+  // versions get a chip in the bar's single row, so pages with fixed headers or sidebars
+  // (which sit just below the top of the window) aren't covered.
   let banner = "";
+  let notice = "";
   if (m.preview) {
     banner = `<div class="banner preview">Preview: not published. The number and version are placeholders.</div>`;
   } else if (m.state === "retracted") {
     banner = `<div class="banner bad"><strong>Retracted</strong> ${esc(day(m.state_date))}: ${esc(m.state_reason)}</div>`;
-  } else if (m.superseded_by) {
-    banner = `<div class="banner warn">Superseded by <a href="/${esc(m.superseded_by)}/">${esc(m.superseded_by)}</a>.</div>`;
-  } else if (m.version < m.latest) {
-    const change = m.latest_change
-      ? ` (${esc(m.latest_change.type)} ${esc(day(m.latest_published))}: ${esc(m.latest_change.summary)})`
-      : "";
-    banner =
-      `<div class="banner warn">You are reading version ${m.version}. ` +
-      `The latest is <a href="${esc(m.latest_url)}">version ${m.latest}</a>${change}.</div>`;
+  }
+  if (!m.preview && m.superseded_by) {
+    notice = `<a class="chip warn" href="/${esc(m.superseded_by)}/">Superseded by ${esc(m.superseded_by)}</a>`;
+  } else if (!m.preview && m.version < m.latest) {
+    const change = m.latest_change ? ` (${esc(m.latest_change.type)} ${esc(day(m.latest_published))})` : "";
+    const why = m.latest_change ? esc(m.latest_change.summary) : "";
+    notice = `<a class="chip warn" href="${esc(m.latest_url)}" title="${why}">Older version · latest is v${m.latest}${change}</a>`;
   }
 
   // A GitHub "new issue" link opens our issue form with this finding already named.
@@ -94,6 +96,8 @@
     .muted { color: var(--muted); }
     .chip { border: 1px solid var(--muted); border-radius: 4px; padding: 0 5px; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
     .chip.verified { border-color: #2e7d4f; color: #2e7d4f; }
+    a.chip.warn { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-fg); text-decoration: none; }
+    a.chip.warn:hover { text-decoration: underline; }
     .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 12rem; }
     .actions { display: flex; gap: 12px; flex-wrap: wrap; }
     button { all: unset; cursor: pointer; color: var(--accent); }
@@ -121,6 +125,7 @@
           <div class="row">
             <a class="site" href="/">AFH Findings</a>
             <span class="id">${esc(m.id)} · v${m.version}</span>
+            ${notice}
             <span class="chip ${m.status === "verified" ? "verified" : ""}">${esc(m.status)}</span>
             <span class="chip">${esc(m.kind)}</span>
             <span class="who">${authorsHtml} <span class="muted">· ${esc(day(m.published))}</span></span>
