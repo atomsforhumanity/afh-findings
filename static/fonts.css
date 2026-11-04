@@ -1,0 +1,23 @@
+/* The Atoms for Humanity typefaces, as on afh.org. All under the SIL Open Font License;
+   see /_static/fonts/OFL-*.txt. Latin subsets, variable weights. */
+@font-face {
+  font-family: "Source Serif 4 Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 900;
+  src: url(/_static/fonts/source-serif-4.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Source Sans 3 Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 900;
+  src: url(/_static/fonts/source-sans-3.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Geist Mono Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(/_static/fonts/geist-mono.woff2) format("woff2");
+}

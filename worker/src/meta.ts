@@ -67,7 +67,7 @@ export function pageMeta(f: FindingEntry, m: Manifest, env: Env): PageMeta {
 
 const slashDate = (iso: string) => iso.slice(0, 10).replaceAll("-", "/");
 
-export function headHtml(meta: PageMeta, siteUrl: string, canonicalPath: string): string {
+export function headHtml(meta: PageMeta, siteUrl: string, canonicalPath: string, bar = true): string {
   const tag = (name: string, content: string) => `<meta name="${name}" content="${esc(content)}">`;
   const parts = [`<link rel="canonical" href="${esc(siteUrl + canonicalPath)}">`];
   parts.push(tag("citation_title", meta.title));
@@ -77,9 +77,11 @@ export function headHtml(meta: PageMeta, siteUrl: string, canonicalPath: string)
   parts.push(tag("citation_technical_report_institution", "Atoms for Humanity"));
   parts.push(tag("citation_technical_report_number", `${meta.id} v${meta.version}`));
   if (meta.doi) parts.push(tag("citation_doi", meta.doi));
-  const json = JSON.stringify(meta).replaceAll("<", "\\u003c");
-  parts.push(`<script type="application/json" id="afh-finding">${json}</script>`);
-  parts.push(`<script src="/_static/bar.js" defer></script>`);
+  if (bar) {
+    const json = JSON.stringify(meta).replaceAll("<", "\\u003c");
+    parts.push(`<script type="application/json" id="afh-finding">${json}</script>`);
+    parts.push(`<script src="/_static/bar.js" defer></script>`);
+  }
   return parts.join("");
 }
 

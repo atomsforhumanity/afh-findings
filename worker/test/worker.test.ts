@@ -32,11 +32,15 @@ describe("site pages", () => {
     expect(res.status).toBe(200);
     const body = await res.text();
     expect(body).toContain("GPU single points cost six times less");
-    expect(body).toContain("v2 corrected 2026-10-05");
-    expect(body).toContain("retracted 2026-10-20");
+    expect(body).toContain("v2 · corrected 2026-10-05");
+    expect(body).toContain("Retracted 2026-10-20");
     expect(body).toContain("Withdrawn 2026-10-16");
     expect(body).not.toContain("should never have been public");
-    expect(body.indexOf('data-id="F0001"')).toBeLessThan(body.indexOf('data-id="F0002"'));
+    // Newest first, by number.
+    const at = (id: string) => body.indexOf(`data-id="${id}"`);
+    expect(at("F0004")).toBeLessThan(at("F0003"));
+    expect(at("F0003")).toBeLessThan(at("F0002"));
+    expect(at("F0002")).toBeLessThan(at("F0001"));
   });
 
   it("serves about, feed, json, csv, sitemap, robots and bar.js", async () => {
@@ -50,6 +54,14 @@ describe("site pages", () => {
     expect(await (await get("/index.csv")).text()).toMatch(/^id,version,title/);
     expect(await (await get("/sitemap.xml")).text()).toContain(`${SITE}/F0002/`);
     expect(await (await get("/robots.txt")).text()).toContain("Sitemap:");
+    const font = await get("/_static/fonts/source-serif-4.woff2");
+    expect(font.headers.get("content-type")).toBe("font/woff2");
+    expect(font.headers.get("cache-control")).toContain("immutable");
+    expect(new Uint8Array(await font.arrayBuffer()).slice(0, 4)).toEqual(new Uint8Array([0x77, 0x4f, 0x46, 0x32])); // "wOF2"
+    expect(await (await get("/_static/fonts.css")).text()).toContain("Source Sans 3 Variable");
+    expect((await get("/_static/fonts/OFL-geist-mono.txt")).status).toBe(200);
+    expect((await get("/favicon.ico")).headers.get("content-type")).toBe("image/svg+xml");
+    expect((await get("/_static/nope.js")).status).toBe(404);
     const bar = await get("/_static/bar.js");
     expect(bar.headers.get("content-type")).toContain("javascript");
     expect(await bar.text()).toContain("afh-finding-bar");

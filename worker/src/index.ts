@@ -9,7 +9,7 @@
 // Only versions listed in the registry are served, so a half-finished upload is never
 // visible. Withdrawn findings answer 410 everywhere.
 
-import { BAR_JS } from "./generated/static";
+import { STATIC_FILES } from "./generated/static";
 import { atom, csv, publicIndex, sitemap } from "./feeds";
 import { headHtml, injectHead, pageMeta } from "./meta";
 import * as pages from "./pages";
@@ -65,6 +65,29 @@ function headOnly(req: Request, res: Response): Response {
   return req.method === "HEAD" ? new Response(null, { status: res.status, headers: res.headers }) : res;
 }
 
+const decoded = new Map<string, Uint8Array>();
+
+// bar.js, fonts.css, the font files and their licenses, and the favicon, built into the Worker
+// from ../static by scripts/embed-static.mjs.
+function serveStatic(rel: string): Response {
+  const file = STATIC_FILES[rel];
+  if (!file) return notFound();
+  let body: BodyInit;
+  if (file.base64 !== undefined) {
+    let bytes = decoded.get(rel);
+    if (!bytes) {
+      bytes = Uint8Array.from(atob(file.base64), (c) => c.charCodeAt(0));
+      decoded.set(rel, bytes);
+    }
+    body = bytes;
+  } else {
+    body = file.text ?? "";
+  }
+  // Font files are named by family and never change in place; the rest can change on deploy.
+  const cache = rel.endsWith(".woff2") ? IMMUTABLE : "public, max-age=3600";
+  return respond(body, 200, file.type, cache);
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     if (req.method !== "GET" && req.method !== "HEAD") {
@@ -106,11 +129,10 @@ async function route(req: Request, env: Env): Promise<Response> {
       return respond(sitemap(await loadIndex(env), site), 200, "application/xml; charset=utf-8");
     case "/robots.txt":
       return respond(`User-agent: *\nAllow: /\nSitemap: ${site}/sitemap.xml\n`, 200, "text/plain; charset=utf-8");
-    case "/_static/bar.js":
-      return respond(BAR_JS, 200, "text/javascript; charset=utf-8", "public, max-age=300");
     case "/favicon.ico":
-      return respond(null, 204, "text/plain", IMMUTABLE);
+      return serveStatic("favicon.svg");
   }
+  if (path.startsWith("/_static/")) return serveStatic(path.slice("/_static/".length));
 
   const m = /^\/(F\d{4})(\/.*)?$/.exec(path);
   if (!m) return notFound();
@@ -155,7 +177,7 @@ async function serveVersion(
   let rel = sub.slice(1);
   if (rel === "_about" || rel === "_about/") {
     const page = pages.findingAbout(finding, manifest, site);
-    return injectHead(html(page), headHtml(meta, site, canonicalFor("_about")));
+    return injectHead(html(page), headHtml(meta, site, canonicalFor("_about"), false));
   }
   if (rel === "") rel = manifest.entry;
 
@@ -167,7 +189,7 @@ async function serveVersion(
     if (manifest.files.some((f) => f.path === `${dir}/index.html`)) {
       rel = `${dir}/index.html`;
     } else if (hasChildren) {
-      return injectHead(html(pages.listing(manifest, urlBase, dir)), headHtml(meta, site, canonicalFor(`${dir}/`)));
+      return injectHead(html(pages.listing(manifest, urlBase, dir)), headHtml(meta, site, canonicalFor(`${dir}/`), false));
     } else {
       return notFound();
     }

@@ -1,27 +1,38 @@
 // The site's own pages: the list of findings, About, a finding's files & history page,
-// folder listings, the withdrawn notice and 404.
+// folder listings, the withdrawn notice and 404. Styled to match afh.org (see html.ts).
 
-import { authorList, day, esc, formatBytes, layout } from "./html";
+import { REPO_URL, authorList, day, esc, formatBytes, layout } from "./html";
 import type { FindingEntry, Index, Manifest } from "./types";
 
 const SITE_NAME = "AFH Findings";
+const KIND_LABEL: Record<string, string> = {
+  result: "Result",
+  method: "Method",
+  resource: "Resource",
+  "informative-failure": "Informative failure",
+};
+const kindLabel = (k: string) => KIND_LABEL[k] ?? k;
+const byNumberDesc = (a: { id: string }, b: { id: string }) => b.id.localeCompare(a.id);
 
-function lastChange(f: FindingEntry): string {
+function changeTag(f: FindingEntry): string {
   const v = f.versions[f.versions.length - 1];
-  if (!v || v.version === 1) return `new ${day(f.first_published)}`;
-  return `v${v.version} ${v.change?.type ?? "updated"} ${day(v.published)}`;
+  if (!v || v.version === 1) return "";
+  const type = v.change?.type ?? "updated";
+  const cls = type === "corrected" || type === "weakened" ? "warn" : "info";
+  return `<span class="tag ${cls}" title="${esc(v.change?.summary ?? "")}">v${v.version} · ${esc(type)} ${esc(day(v.published))}</span>`;
 }
 
-function changeClass(f: FindingEntry): string {
-  const v = f.versions[f.versions.length - 1];
-  return v?.change ? `change-${esc(v.change.type)}` : "";
+function statusTag(status: string): string {
+  return status === "verified"
+    ? `<span class="tag verified" title="A script published with it recomputes its numbers from its data">✓ Verified</span>`
+    : `<span class="tag">${esc(status)}</span>`;
 }
 
 function homeItem(f: FindingEntry): string {
   if (f.state === "withdrawn") {
-    return `<li class="withdrawn" data-state="withdrawn" data-text="${esc(f.id.toLowerCase())}"
-      data-updated="${esc(f.updated)}" data-id="${esc(f.id)}">
-      <span class="fid">${esc(f.id)}</span><span class="muted">Withdrawn ${esc(day(f.state_date))}.</span></li>`;
+    return `<li class="withdrawn" data-id="${esc(f.id)}" data-state="withdrawn" data-updated="${esc(f.updated ?? f.state_date ?? "")}"
+      data-text="${esc(f.id.toLowerCase())}"><div class="finding-label"><span class="fid">${esc(f.id)}</span></div>
+      <p>Withdrawn ${esc(day(f.state_date))}.</p></li>`;
   }
   const authors = f.authors.map((a) => a.name);
   const attrs = [
@@ -37,34 +48,32 @@ function homeItem(f: FindingEntry): string {
   ].join(" ");
   const classes = [f.state === "retracted" ? "retracted" : "", f.superseded_by ? "superseded" : ""].join(" ").trim();
   const extras: string[] = [];
-  if (f.state === "retracted") extras.push(`<span class="chip change-corrected">retracted ${esc(day(f.state_date))}</span>`);
-  if (f.superseded_by) extras.push(`<span>superseded by <a href="/${esc(f.superseded_by)}/">${esc(f.superseded_by)}</a></span>`);
+  if (f.state === "retracted") extras.push(`<span class="tag bad" title="${esc(f.state_reason)}">Retracted ${esc(day(f.state_date))}</span>`);
+  if (f.superseded_by) extras.push(`<span>Superseded by <a href="/${esc(f.superseded_by)}/">${esc(f.superseded_by)}</a></span>`);
   if (f.builds_on.length)
     extras.push(
-      `<span>builds on ${f.builds_on
-        .map((r) => `<a href="/${esc(r)}/">${esc(r.split("/")[0])}</a>`)
-        .join(", ")}</span>`,
+      `<span>Builds on ${f.builds_on.map((r) => `<a href="/${esc(r)}/">${esc(r.split("/")[0])}</a>`).join(", ")}</span>`,
     );
   if (f.doi) extras.push(`<a href="https://doi.org/${esc(f.doi)}">DOI</a>`);
-  if (f.stacks_url) extras.push(`<a href="${esc(f.stacks_url)}">The Stacks</a>`);
+  if (f.stacks_url) extras.push(`<a href="${esc(f.stacks_url)}">On The Stacks</a>`);
   return `<li class="${classes}" ${attrs}>
-  <div><span class="fid">${esc(f.id)}</span><a class="title" href="/${esc(f.id)}/">${esc(f.title)}</a></div>
+  <div class="finding-label"><span class="fid">${esc(f.id)}</span><span>${esc(kindLabel(f.kind))}</span><span>${esc(f.project)}</span></div>
+  <h2 class="finding-title"><a href="/${esc(f.id)}/">${esc(f.title)}</a></h2>
   <p class="claim">${esc(f.claim)}</p>
   <div class="meta">
     <span>${esc(authorList(f.authors))}</span>
-    <span class="chip">${esc(f.kind)}</span>
-    <span>${esc(f.project)}</span>
-    <span class="chip ${f.status === "verified" ? "verified" : ""}">${esc(f.status)}</span>
-    <span class="chip ${changeClass(f)}">${esc(lastChange(f))}</span>
+    <span>${esc(day(f.first_published))}</span>
+    ${statusTag(f.status)}
+    ${changeTag(f)}
     ${extras.join("\n    ")}
   </div>
 </li>`;
 }
 
-function options(values: string[], label: string, name: string): string {
+function options(values: string[], label: string, name: string, show: (v: string) => string = (v) => v): string {
   const unique = [...new Set(values)].sort((a, b) => a.localeCompare(b));
   return `<select name="${name}" aria-label="${label}"><option value="">${label}: all</option>${unique
-    .map((v) => `<option value="${esc(v)}">${esc(v)}</option>`)
+    .map((v) => `<option value="${esc(v)}">${esc(show(v))}</option>`)
     .join("")}</select>`;
 }
 
@@ -80,33 +89,36 @@ const FILTER_JS = `
     if (el.type === "checkbox") el.checked = params.get(el.name) === "1";
     else if (params.has(el.name)) el.value = params.get(el.name);
   }
+  const orders = {
+    newest: (a, b) => b.dataset.id.localeCompare(a.dataset.id),
+    oldest: (a, b) => a.dataset.id.localeCompare(b.dataset.id),
+    changed: (a, b) => (b.dataset.updated || "").localeCompare(a.dataset.updated || ""),
+  };
   function apply() {
     const q = form.q.value.trim().toLowerCase();
     const want = { kind: form.kind.value, project: form.project.value, status: form.status.value };
     const author = form.author.value;
     const showOld = form.superseded.checked;
-    const sort = form.sort.value;
     let shown = 0;
-    const sorted = [...items].sort((a, b) => sort === "id"
-      ? a.dataset.id.localeCompare(b.dataset.id)
-      : (b.dataset.updated || "").localeCompare(a.dataset.updated || ""));
-    for (const li of sorted) {
+    for (const li of [...items].sort(orders[form.sort.value] || orders.newest)) {
       list.appendChild(li);
       const d = li.dataset;
-      let ok = (!q || (d.text || "").includes(q))
+      const filtered = Object.values(want).some(Boolean) || author;
+      const ok = (!q || (d.text || "").includes(q))
         && Object.entries(want).every(([k, v]) => !v || d[k] === v)
         && (!author || (d.authors || "").split("|").includes(author))
         && (showOld || !d.superseded)
-        && (d.state !== "withdrawn" || (!want.kind && !want.project && !want.status && !author));
+        && (d.state !== "withdrawn" || !filtered);
       li.hidden = !ok;
       if (ok) shown++;
     }
-    count.textContent = shown === items.length ? items.length + " findings" : shown + " of " + items.length + " findings";
+    count.textContent = shown === items.length ? items.length + (items.length === 1 ? " finding" : " findings")
+      : shown + " of " + items.length + " findings";
     const next = new URLSearchParams();
     for (const el of form.elements) {
       if (!el.name) continue;
       if (el.type === "checkbox") { if (el.checked) next.set(el.name, "1"); }
-      else if (el.value && !(el.name === "sort" && el.value === "updated")) next.set(el.name, el.value);
+      else if (el.value && !(el.name === "sort" && el.value === "newest")) next.set(el.name, el.value);
     }
     const qs = next.toString();
     history.replaceState(null, "", qs ? "?" + qs : location.pathname);
@@ -117,80 +129,82 @@ const FILTER_JS = `
 })();`;
 
 export function home(index: Index): string {
-  const findings = Object.values(index.findings).sort((a, b) => (b.updated ?? "").localeCompare(a.updated ?? ""));
+  const findings = Object.values(index.findings).sort(byNumberDesc);
   const visible = findings.filter((f) => f.state !== "withdrawn");
+  const n = findings.length;
   const body = `
-<header>
-  <h1>Atoms for Humanity: Findings</h1>
-  <p class="lede">Early results from our research, published as soon as we understand them. Each finding is one
-  claim with the data and code behind it. They are not peer-reviewed; every one is versioned, and corrections are
-  made in public.</p>
-  <nav class="nav"><a href="/about">About &amp; how to cite</a><a href="/feed.xml">Feed</a>
-  <a href="/index.json">JSON</a><a href="/index.csv">CSV</a></nav>
-</header>
+<p class="eyebrow">Findings</p>
+<h1>Results from our research, as we find them.</h1>
+<p class="lede">Each finding is one claim with the data and code behind it, published as soon as we understand it.
+Findings are not peer-reviewed; every one is versioned, and corrections are made in public.
+<a href="/about">How findings work</a>.</p>
 <form id="filters" class="filters" role="search">
-  <input type="search" name="q" placeholder="Search claims" aria-label="Search claims">
-  ${options(visible.map((f) => f.kind), "Kind", "kind")}
+  <input type="search" name="q" placeholder="Search findings" aria-label="Search findings">
+  ${options(visible.map((f) => f.kind), "Kind", "kind", kindLabel)}
   ${options(visible.map((f) => f.project), "Project", "project")}
   ${options(visible.flatMap((f) => f.authors.map((a) => a.name)), "Author", "author")}
   ${options(visible.map((f) => f.status), "Status", "status")}
-  <select name="sort" aria-label="Sort"><option value="updated">Recently changed</option><option value="id">By number</option></select>
-  <label><input type="checkbox" name="superseded" value="1"> show superseded</label>
+  <select name="sort" aria-label="Order"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="changed">Recently changed</option></select>
+  <label><input type="checkbox" name="superseded" value="1"> Show superseded</label>
 </form>
-<p id="count" class="count">${findings.length} findings</p>
-${findings.length ? `<ol id="list" class="findings">${findings.map(homeItem).join("\n")}</ol>` : `<ol id="list" class="findings"></ol><p>No findings yet.</p>`}
-<footer>Text and figures CC-BY-4.0, data CC0 unless a finding says otherwise, code MIT.
-Atoms for Humanity, Astera Institute.</footer>
+<p id="count" class="count">${n} ${n === 1 ? "finding" : "findings"}</p>
+<ol id="list" class="findings">${findings.map(homeItem).join("\n")}</ol>
+${n ? "" : "<p>No findings yet.</p>"}
 <script>${FILTER_JS}</script>`;
   return layout({
     title: SITE_NAME,
     body,
-    description: "Early results from Atoms for Humanity, published as soon as we understand them.",
+    current: "/",
+    description: "Results from Atoms for Humanity's research, published as we find them.",
   });
 }
 
 export function about(siteUrl: string, feedbackUrl: string | undefined): string {
   const feedback = feedbackUrl
-    ? `<p>Found a problem? <a href="${esc(feedbackUrl)}">Tell us</a>. We correct findings in public.</p>`
+    ? `<p>Found a problem? <a href="${esc(feedbackUrl)}">Tell us</a>; every finding page also has a link. We
+correct findings in public.</p>`
     : "";
   const body = `
-<p><a href="/">← All findings</a></p>
-<h1>About AFH Findings</h1>
+<p class="eyebrow">About</p>
+<h1>How findings work</h1>
 <p class="lede">Atoms for Humanity publishes results here as soon as we understand them, rather than waiting for a
 paper. A finding is small: one claim, the numbers behind it, where it holds, what was not tested, and the data and
 code to check it.</p>
+<div class="prose">
 <h2>What to expect</h2>
 <ul>
-<li><strong>Not peer-reviewed.</strong> We read each other's findings, but nothing here has been through formal
-review. Some are marked <em>verified</em>: a script published with the finding recomputes its numbers from its
-data, and it passed when the finding was published.</li>
-<li><strong>Versioned.</strong> When later work changes a finding, we publish a new version and say how it changed
-(corrected, expanded, strengthened, weakened or revised). Older versions stay readable at <code>/F0001/v1/</code>, with a
-note pointing to the latest.</li>
+<li><strong>Not peer-reviewed.</strong> We read each other's findings, but none has been through formal review.
+A finding marked <em>verified</em> ships a script that recomputes its numbers from its own data, and that script
+passed when it was published.</li>
+<li><strong>Versioned.</strong> When later work changes a finding, we publish a new version and say how it changed:
+corrected, expanded, strengthened, weakened or revised. Older versions stay readable at
+<code>/F0001/v1/</code>, marked as older.</li>
 <li><strong>Corrected in public.</strong> A finding that turns out to be wrong is retracted, not deleted: it stays
-up with the reason. Only content that should never have been public (for example personal or partner data) is
-withdrawn, and a notice stays at its address.</li>
+up with the reason. Only content that should never have been public, such as personal or partner data, is withdrawn,
+and a notice stays at its address.</li>
 <li><strong>Written with AI assistance.</strong> We use AI tools for analysis code and drafting. The named authors
 checked each finding and are responsible for every claim in it.</li>
 </ul>
 <h2>Citing a finding</h2>
 <p>Every finding page has a <em>Cite</em> button. Cite the version you read, for example
 <code>${esc(siteUrl)}/F0001/v2/</code>, since the latest version can change. Findings that settle into a longer
-write-up are published on <a href="https://thestacks.org">The Stacks</a>, which gives them a DOI; the finding links
-to it.</p>
+write-up are published on <a href="https://thestacks.org">The Stacks</a>, which gives them a DOI, and the finding
+links to it.</p>
 <h2>Reusing our work</h2>
-<p>Unless a finding says otherwise: text and figures are <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY-4.0</a>,
-data is <a href="https://creativecommons.org/publicdomain/zero/1.0/">CC0</a> (CC-BY-4.0 when it derives from
-CC-BY sources, which you should credit too), and code is MIT. Each version's <em>Files &amp; history</em> page
-lists its files with SHA-256 checksums, and its zip holds everything.</p>
+<p>Unless a finding says otherwise, text and figures are
+<a href="https://creativecommons.org/licenses/by/4.0/">CC-BY-4.0</a>, data is
+<a href="https://creativecommons.org/publicdomain/zero/1.0/">CC0</a> (CC-BY-4.0 when it derives from CC-BY
+sources, which you should credit too), and code is MIT. Each version's <em>Files &amp; history</em> page lists its
+files with SHA-256 checksums, and its zip holds everything. We follow the Astera Institute's
+<a href="https://astera.org/open-science/">open science policy</a>.</p>
 <h2>For machines</h2>
-<p><a href="/feed.xml">Atom feed</a> of new findings and versions · <a href="/index.json">index.json</a> ·
-<a href="/index.csv">index.csv</a> · <a href="/sitemap.xml">sitemap</a>. Each version's
-<code>finding.json</code> describes it.</p>
+<p>An <a href="/feed.xml">Atom feed</a> of new findings and versions, <a href="/index.json">index.json</a>,
+<a href="/index.csv">index.csv</a> and a <a href="/sitemap.xml">sitemap</a>. Each version's
+<code>finding.json</code> describes it. The site and its publishing tool are
+<a href="${REPO_URL}">open source</a>.</p>
 ${feedback}
-<p class="muted">Atoms for Humanity is part of the <a href="https://astera.org">Astera Institute</a>, which publishes
-openly under its <a href="https://astera.org/open-science/">open science policy</a>.</p>`;
-  return layout({ title: `About · ${SITE_NAME}`, body });
+</div>`;
+  return layout({ title: `About · ${SITE_NAME}`, body, current: "/about" });
 }
 
 function citeText(m: Manifest, f: FindingEntry, siteUrl: string): string {
@@ -201,11 +215,11 @@ function citeText(m: Manifest, f: FindingEntry, siteUrl: string): string {
 
 function materials(items: { path: string; description?: string }[], none: string | null, base: string): string {
   if (none) return `<p class="muted">None: ${esc(none)}</p>`;
-  return `<ul>${items
+  return `<ul class="prose">${items
     .map((i) => {
       const isUrl = /^https?:\/\//.test(i.path);
       const href = isUrl ? i.path : base + i.path;
-      return `<li><a href="${esc(href)}">${esc(i.path)}</a>${i.description ? ` · ${esc(i.description)}` : ""}</li>`;
+      return `<li><a href="${esc(href)}"><code>${esc(i.path)}</code></a>${i.description ? `: ${esc(i.description)}` : ""}</li>`;
     })
     .join("")}</ul>`;
 }
@@ -216,12 +230,15 @@ export function findingAbout(f: FindingEntry, m: Manifest, siteUrl: string): str
   if (f.state === "retracted")
     notices.push(`<div class="notice bad"><strong>Retracted</strong> ${esc(day(f.state_date))}: ${esc(f.state_reason)}</div>`);
   if (m.version < f.latest)
-    notices.push(`<div class="notice warn">This is version ${m.version}. The latest is <a href="/${esc(m.id)}/_about">version ${f.latest}</a>.</div>`);
+    notices.push(
+      `<div class="notice warn">This is version ${m.version}. The latest is <a href="/${esc(m.id)}/_about">version ${f.latest}</a>.</div>`,
+    );
   const versions = [...f.versions]
     .reverse()
     .map(
       (v) => `<tr><td><a href="/${esc(m.id)}/v${v.version}/">v${v.version}</a>${v.version === m.version ? " (this)" : ""}</td>
-      <td>${esc(day(v.published))}</td><td>${v.change ? `<span class="chip change-${esc(v.change.type)}">${esc(v.change.type)}</span> ${esc(v.change.summary)}` : "First version"}</td>
+      <td>${esc(day(v.published))}</td>
+      <td>${v.change ? `<span class="tag ${v.change.type === "corrected" || v.change.type === "weakened" ? "warn" : "info"}">${esc(v.change.type)}</span> ${esc(v.change.summary)}` : "First version"}</td>
       <td>${esc(v.publisher ?? "")}</td></tr>`,
     )
     .join("");
@@ -232,7 +249,7 @@ export function findingAbout(f: FindingEntry, m: Manifest, siteUrl: string): str
   const files = [...m.files]
     .sort((a, b) => a.path.localeCompare(b.path))
     .map(
-      (file) => `<tr><td><a href="${esc(base + file.path)}">${esc(file.path)}</a></td><td>${esc(formatBytes(file.size))}</td>
+      (file) => `<tr><td><a href="${esc(base + file.path)}"><code>${esc(file.path)}</code></a></td><td>${esc(formatBytes(file.size))}</td>
       <td><code title="${esc(file.sha256)}">${esc(file.sha256.slice(0, 12))}…</code></td></tr>`,
     )
     .join("");
@@ -243,55 +260,53 @@ export function findingAbout(f: FindingEntry, m: Manifest, siteUrl: string): str
     )
     .join(", ");
   const upstream = m.upstream.length
-    ? `<h2>Builds on</h2><ul>${m.upstream
+    ? `<h2>Sources</h2><ul class="prose">${m.upstream
         .map((u) => {
           const link = u.doi ? `https://doi.org/${u.doi}` : u.url;
-          return `<li>${link ? `<a href="${esc(link)}">${esc(u.name)}</a>` : esc(u.name)}${u.license ? ` · ${esc(u.license)}` : ""}${u.note ? ` · ${esc(u.note)}` : ""}</li>`;
+          return `<li>${link ? `<a href="${esc(link)}">${esc(u.name)}</a>` : esc(u.name)}${u.license ? ` · ${esc(u.license)}` : ""}${u.note ? ` · <span class="muted">${esc(u.note)}</span>` : ""}</li>`;
         })
         .join("")}</ul>`
     : "";
-  const buildsOn = m.builds_on.length
-    ? `<p>Other findings: ${m.builds_on.map((r) => `<a href="/${esc(r)}/">${esc(r)}</a>`).join(", ")}</p>`
-    : "";
+  const fact = (label: string, value: string) => (value ? `<dt>${label}</dt><dd>${value}</dd>` : "");
+  const profiles = Object.keys(m.profiles ?? {});
   const privateCode = m.private_code?.length
     ? `<p class="notice warn">Some code used here is not public: ${m.private_code.map((c) => esc(c)).join(", ")}.</p>`
     : "";
-  const cite = citeText(m, f, siteUrl);
   const body = `
-<p><a href="/">← All findings</a> · <a href="${esc(base)}">Read ${esc(m.id)} v${m.version}</a></p>
+<a class="back" href="${esc(base)}">← Read ${esc(m.id)} version ${m.version}</a>
 ${notices.join("")}
-<p class="muted">${esc(m.id)} · version ${m.version} · ${esc(m.kind)} · ${esc(m.project)} ·
-<span class="chip ${m.status === "verified" ? "verified" : ""}">${esc(m.status)}</span></p>
-<h1>${esc(m.title)}</h1>
-<p>${esc(m.claim)}</p>
-<table>
-<tr><th>Authors</th><td>${authors}</td></tr>
-<tr><th>Published</th><td>${esc(day(m.published))}${m.publisher ? ` by ${esc(m.publisher)}` : ""}${m.version > 1 ? ` · first version ${esc(day(f.first_published))}` : ""}</td></tr>
-<tr><th>Licenses</th><td>text ${esc(m.license.text)} · data ${esc(m.license.data)} · code ${esc(m.license.code)}</td></tr>
-${m.check ? `<tr><th>Check</th><td><code>${esc(m.check)}</code> recomputes the numbers from the data; it passed at publish.</td></tr>` : ""}
-${Object.keys(m.profiles ?? {}).length ? `<tr><th>Rules met</th><td>core standard, ${Object.keys(m.profiles).map(esc).join(", ")}</td></tr>` : `<tr><th>Rules met</th><td>core standard</td></tr>`}
-${f.doi ? `<tr><th>DOI</th><td><a href="https://doi.org/${esc(f.doi)}">${esc(f.doi)}</a></td></tr>` : ""}
-${f.stacks_url ? `<tr><th>Write-up</th><td><a href="${esc(f.stacks_url)}">On The Stacks</a></td></tr>` : ""}
-${m.formerly?.length ? `<tr><th>Formerly</th><td>${m.formerly.map((x) => (/^https?:\/\//.test(x) ? `<a href="${esc(x)}">${esc(x)}</a>` : esc(x))).join("<br>")}</td></tr>` : ""}
-</table>
+<p class="eyebrow"><span class="mono">${esc(m.id)}</span> · Version ${m.version} · ${esc(kindLabel(m.kind))} · ${esc(m.project)}</p>
+<h1 class="long">${esc(m.title)}</h1>
+<p class="lede">${esc(m.claim)}</p>
+<dl class="facts">
+${fact("Authors", authors)}
+${fact("Status", statusTag(m.status))}
+${fact("Published", `${esc(day(m.published))}${m.publisher ? ` by ${esc(m.publisher)}` : ""}${m.version > 1 ? ` · first version ${esc(day(f.first_published))}` : ""}`)}
+${fact("Licenses", `Text ${esc(m.license.text)} · data ${esc(m.license.data)} · code ${esc(m.license.code)}`)}
+${fact("Check", m.check ? `<code>${esc(m.check)}</code> recomputes the numbers from the data; it passed at publish.` : "")}
+${fact("Rules met", `Core standard${profiles.length ? `, ${profiles.map(esc).join(", ")}` : ""}`)}
+${fact("Builds on", m.builds_on.map((r) => `<a href="/${esc(r)}/">${esc(r)}</a>`).join(", "))}
+${fact("DOI", f.doi ? `<a href="https://doi.org/${esc(f.doi)}">${esc(f.doi)}</a>` : "")}
+${fact("Write-up", f.stacks_url ? `<a href="${esc(f.stacks_url)}">On The Stacks</a>` : "")}
+${fact("Formerly", (m.formerly ?? []).map((x) => (/^https?:\/\//.test(x) ? `<a href="${esc(x)}">${esc(x)}</a>` : esc(x))).join("<br>"))}
+</dl>
+<div class="actions"><a class="button" href="${esc(base + `${m.id}-v${m.version}.zip`)}">Download everything</a>
+<a href="${esc(base + "SHA256SUMS")}">SHA256SUMS</a><a href="${esc(base + "finding.json")}">finding.json</a></div>
 <h2>Not tested</h2>
-<ul>${m.scope.not_tested.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
+<ul class="prose">${m.scope.not_tested.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
 <h2>Data</h2>
 ${materials(m.data, m.data_none, base)}
 <h2>Code</h2>
 ${materials(m.code, m.code_none, base)}
 ${privateCode}
 ${upstream}
-${buildsOn}
 <h2>Cite</h2>
-<pre>${esc(cite)}</pre>
+<pre>${esc(citeText(m, f, siteUrl))}</pre>
 <h2>History</h2>
-<table><tr><th>Version</th><th>Date</th><th>Change</th><th>Published by</th></tr>${versions}</table>
-${events ? `<ul>${events}</ul>` : ""}
+<div class="table-wrap"><table><tr><th>Version</th><th>Date</th><th>Change</th><th>Published by</th></tr>${versions}</table></div>
+${events ? `<ul class="prose">${events}</ul>` : ""}
 <h2>Files</h2>
-<p><a href="${esc(base + `${m.id}-v${m.version}.zip`)}">Download everything (${esc(m.id)}-v${m.version}.zip)</a> ·
-<a href="${esc(base + "SHA256SUMS")}">SHA256SUMS</a> · <a href="${esc(base + "finding.json")}">finding.json</a></p>
-<table><tr><th>File</th><th>Size</th><th>SHA-256</th></tr>${files}</table>`;
+<div class="table-wrap"><table><tr><th>File</th><th>Size</th><th>SHA-256</th></tr>${files}</table></div>`;
   return layout({ title: `${m.id} v${m.version}: files & history · ${SITE_NAME}`, body, description: m.claim });
 }
 
@@ -307,28 +322,30 @@ export function listing(m: Manifest, urlBase: string, dir: string): string {
   }
   const rows = [...entries.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([name, size]) => `<tr><td><a href="${esc(name)}">${esc(name)}</a></td><td>${size === null ? "" : esc(formatBytes(size))}</td></tr>`)
+    .map(([name, size]) => `<tr><td><a href="${esc(name)}"><code>${esc(name)}</code></a></td><td>${size === null ? "" : esc(formatBytes(size))}</td></tr>`)
     .join("");
   const body = `
-<p><a href="${esc(urlBase)}">← ${esc(m.id)}: ${esc(m.title)}</a></p>
-<h1><code>${esc(prefix || "/")}</code></h1>
-<table><tr><th>Name</th><th>Size</th></tr>${prefix ? `<tr><td><a href="../">../</a></td><td></td></tr>` : ""}${rows}</table>`;
+<a class="back" href="${esc(urlBase)}">← ${esc(m.id)}: ${esc(m.title)}</a>
+<p class="eyebrow"><span class="mono">${esc(m.id)}</span> · Version ${m.version} · Files</p>
+<h1 class="long"><code>${esc(prefix || "/")}</code></h1>
+<div class="table-wrap" style="margin-top:2rem"><table><tr><th>Name</th><th>Size</th></tr>${prefix ? `<tr><td><a href="../"><code>../</code></a></td><td></td></tr>` : ""}${rows}</table></div>`;
   return layout({ title: `${m.id}/${prefix} · ${SITE_NAME}`, body });
 }
 
 export function withdrawn(f: FindingEntry): string {
   const body = `
-<p><a href="/">← All findings</a></p>
+<p class="eyebrow"><span class="mono">${esc(f.id)}</span> · Withdrawn</p>
 <h1>${esc(f.id)} was withdrawn</h1>
-<p>Withdrawn on ${esc(day(f.state_date))}${f.state_reason ? `: ${esc(f.state_reason)}` : "."}</p>
-<p class="muted">Findings are withdrawn only when their content should not have been public. Findings that turned out
-to be wrong are retracted instead and stay readable.</p>`;
+<p class="lede">Withdrawn on ${esc(day(f.state_date))}${f.state_reason ? `: ${esc(f.state_reason)}` : "."}</p>
+<p class="prose">Findings are withdrawn only when their content should not have been public. Findings that turned
+out to be wrong are retracted instead and stay readable. <a href="/">All findings</a>.</p>`;
   return layout({ title: `${f.id} withdrawn · ${SITE_NAME}`, body });
 }
 
 export function notFound(): string {
   return layout({
     title: `Not found · ${SITE_NAME}`,
-    body: `<p><a href="/">← All findings</a></p><h1>Not found</h1><p>Nothing is published at this address.</p>`,
+    body: `<p class="eyebrow">404</p><h1>Nothing is published here.</h1>
+<p class="lede">Findings live at addresses like <code>/F0001/</code>. <a href="/">See all findings</a>.</p>`,
   });
 }

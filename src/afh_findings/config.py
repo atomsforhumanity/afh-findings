@@ -25,7 +25,7 @@ class Config:
     secret_access_key: str | None = None
     publisher: str | None = None
     site_url: str = "https://findings.afh.org"
-    affiliation: str | None = "Atoms for Humanity, Astera Institute"
+    affiliation: str | None = "Atoms for Humanity"
     # Host and machine names that must never appear in published files.
     internal_hosts: list[str] = field(
         default_factory=lambda: ["afh-services", "melodi", "afh-c01", "afh-k3s"]

@@ -4,7 +4,7 @@
   "account_id": "0175d48560ecd66a34ecc4fadead4d71",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
-  "build": { "command": "node scripts/embed-static.mjs", "watch_dir": "../static" },
+  "build": { "command": "node scripts/embed-static.mjs", "watch_dir": ["src", "../static"] },
   "routes": [{ "pattern": "findings.afh.org", "custom_domain": true }],
   "workers_dev": false,
   "r2_buckets": [

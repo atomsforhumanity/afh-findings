@@ -18,11 +18,15 @@ from afh_findings import __version__, bundle, checks, page, registry
 from afh_findings.config import Config
 
 
-def bar_js() -> bytes:
-    packaged = resources.files("afh_findings").joinpath("static/bar.js")
+def static_file(rel: str) -> bytes | None:
+    """A file from static/ (bar.js, fonts.css, fonts/...), packaged or from the repo."""
+    if ".." in rel.split("/"):
+        return None
+    packaged = resources.files("afh_findings").joinpath("static", *rel.split("/"))
     if packaged.is_file():
         return packaged.read_bytes()
-    return (Path(__file__).resolve().parents[2] / "static" / "bar.js").read_bytes()
+    repo = Path(__file__).resolve().parents[2] / "static" / rel
+    return repo.read_bytes() if repo.is_file() else None
 
 
 def listing(prefix: str, rel_dir: str, files: list[dict[str, Any]]) -> str:
@@ -96,8 +100,13 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         fid, v = self.meta["id"], self.meta["version"]
         path = unquote(urlsplit(self.path).path)
-        if path == "/_static/bar.js":
-            return self._send(200, bar_js(), "text/javascript; charset=utf-8")
+        if path.startswith("/_static/"):
+            rel = path[len("/_static/") :]
+            data = static_file(rel)
+            if data is None:
+                return self._send(404, b"not found", "text/plain; charset=utf-8")
+            ctype = "font/woff2" if rel.endswith(".woff2") else bundle.content_type(rel)
+            return self._send(200, data, ctype)
         if path in ("/", f"/{fid}", f"/{fid}/v{v}"):
             return self._send(HTTPStatus.FOUND, b"", "text/plain", {"Location": f"/{fid}/"})
         for prefix in (f"/{fid}/v{v}/", f"/{fid}/"):
