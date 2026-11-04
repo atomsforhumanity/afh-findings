@@ -147,10 +147,16 @@ def publish(
     extra_profiles: list[str] | None = None,
     profile_files: list[Path] | None = None,
     network: bool = True,
+    skip_profiles: bool = False,
     log: Callable[[str], None] = print,
 ) -> Result:
     checked = checks.check_bundle(
-        bundle_dir, cfg, extra_profiles=extra_profiles, profile_files=profile_files, network=network
+        bundle_dir,
+        cfg,
+        extra_profiles=extra_profiles,
+        profile_files=profile_files,
+        network=network,
+        skip_profiles=skip_profiles,
     )
     if not checked.ok or checked.source is None:
         raise PublishError("the bundle doesn't meet the standard yet", checked.issues)

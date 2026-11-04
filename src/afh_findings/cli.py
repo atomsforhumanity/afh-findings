@@ -117,6 +117,7 @@ def cmd_publish(args: argparse.Namespace) -> int:
             extra_profiles=args.profile,
             profile_files=[Path(p) for p in args.profile_file],
             network=not args.offline,
+            skip_profiles=args.skip_profiles,
         )
     except publish.PublishError as exc:
         _print_issues(exc.issues)
@@ -252,6 +253,9 @@ def parser() -> argparse.ArgumentParser:
     s.add_argument("--yes", action="store_true", help="don't ask for confirmation")
     s.add_argument("--publisher", help="your name (default: publisher in the config)")
     s.add_argument("--published-at", help=argparse.SUPPRESS)  # migration: keep original dates
+    s.add_argument(
+        "--skip-profiles", action="store_true", help=argparse.SUPPRESS
+    )  # admin, recorded
     profile_args(s)
     s.set_defaults(func=cmd_publish)
 

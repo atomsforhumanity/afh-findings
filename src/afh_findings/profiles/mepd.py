@@ -4,7 +4,7 @@ Adapted from the rules Jan Estrada Pabon built for mepd-findings:
 - the page has Background, Approach, Results and Details sections, and Background
   links out for readers who need more;
 - the scope says the level of theory, the software and how the tested items were chosen;
-- every upstream dataset or program has a DOI or URL and a license;
+- every upstream source (data, paper or program) has a DOI or URL;
 - tables are plain .csv, not .csv.gz (macOS Archive Utility misreads gzipped CSV).
 """
 
@@ -90,10 +90,6 @@ def check(source: mf.Source, files: list[str]) -> list[Issue]:
         if not (u.get("doi") or u.get("url")):
             issues.append(
                 error(NAME, f"upstream {u.get('name')!r} needs a doi or url", mf.SOURCE_NAME)
-            )
-        if not u.get("license"):
-            issues.append(
-                error(NAME, f"upstream {u.get('name')!r} needs a license", mf.SOURCE_NAME)
             )
     for rel in files:
         if rel.startswith("data/") and rel.endswith(".csv.gz"):

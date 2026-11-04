@@ -120,6 +120,7 @@ def apply_version(index: dict[str, Any], m: dict[str, Any]) -> None:
                 "keywords": m.get("keywords", []),
                 "builds_on": m.get("builds_on", []),
                 "supersedes": m.get("supersedes"),
+                "formerly": m.get("formerly", []),
                 "license": m.get("license"),
                 "private_code": m.get("private_code", []),
             }

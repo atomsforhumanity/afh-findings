@@ -46,7 +46,10 @@ def check_bundle(
     extra_profiles: list[str] | None = None,
     profile_files: list[Path] | None = None,
     network: bool = True,
+    skip_profiles: bool = False,
 ) -> Checked:
+    """Check a bundle. `skip_profiles` (admin, for migrations) runs only the core standard;
+    the published record then says so."""
     bundle_dir = bundle_dir.resolve()
     try:
         raw = mf.read(bundle_dir)
@@ -82,6 +85,8 @@ def check_bundle(
     issues += privacy.scan(
         bundle_dir, files, cfg.internal_hosts, source.core.get("privacy_allow", []) or []
     )
+    if skip_profiles:
+        return Checked(source, files, issues, [], private_code)
     for prof in active:
         issues += prof.run(source, files)
     return Checked(source, files, issues, [p.name for p in active], private_code)

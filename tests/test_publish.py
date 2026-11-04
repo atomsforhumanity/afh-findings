@@ -175,3 +175,15 @@ def test_supersedes_marks_the_old_finding(tmp_path, cfg, store):
     pub(make_bundle(tmp_path / "a"), cfg, store)
     pub(make_bundle(tmp_path / "b", yaml_text=FINDING_YAML + "supersedes: F0001\n"), cfg, store)
     assert registry.load(store)[0]["findings"]["F0001"]["superseded_by"] == "F0002"
+
+
+def test_skip_profiles_is_recorded(tmp_path, cfg, store):
+    text = FINDING_YAML.replace("project: infrastructure", "project: mepd") + (
+        "mepd:\n  level_of_theory: g-xTB\n  software: [mepd]\n  sampling: all of them, in file order\n"
+    )
+    b = make_bundle(tmp_path / "b", yaml_text=text)
+    with pytest.raises(publish.PublishError):
+        pub(b, cfg, store)  # the mepd rules aren't met
+    r = pub(b, cfg, store, skip_profiles=True)
+    manifest = json.loads(store.get(f"{r.finding_id}/v1/finding.json")[0])
+    assert manifest["profiles"] == {} and manifest["mepd"]["level_of_theory"] == "g-xTB"

@@ -60,6 +60,10 @@
       "type": "array", "items": {"type": "string", "pattern": "^F\\d{4}/v\\d+$"}
     },
     "supersedes": {"type": "string", "pattern": "^F\\d{4}$"},
+    "formerly": {
+      "description": "Earlier identifiers or addresses of this finding, e.g. before it moved here.",
+      "type": "array", "items": {"type": "string", "minLength": 3}
+    },
     "entry": {"type": "string", "minLength": 1},
     "check": {
       "description": "Command that recomputes the stated numbers from the bundle; run from a fresh copy at publish.",

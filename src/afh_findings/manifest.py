@@ -210,6 +210,7 @@ def published_manifest(
         "upstream": core.get("upstream", []),
         "builds_on": core.get("builds_on", []),
         "supersedes": core.get("supersedes"),
+        "formerly": core.get("formerly", []),
         "entry": core.get("entry", DEFAULT_ENTRY),
         "check": core.get("check"),
         "license": license_for(core),

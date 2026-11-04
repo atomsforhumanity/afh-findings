@@ -38,6 +38,7 @@ export interface FindingEntry {
   keywords: string[];
   builds_on: string[];
   supersedes: string | null;
+  formerly?: string[];
   license: Record<string, string> | null;
   private_code: string[];
   state: "active" | "retracted" | "withdrawn";
@@ -99,6 +100,7 @@ export interface Manifest {
   upstream: Upstream[];
   builds_on: string[];
   supersedes: string | null;
+  formerly?: string[];
   entry: string;
   check: string | null;
   license: Record<string, string>;

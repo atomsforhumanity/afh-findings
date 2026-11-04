@@ -127,7 +127,7 @@ def test_mepd_project_requires_its_profile(tmp_path, cfg):
 def test_mepd_profile_passes_when_followed(tmp_path, cfg):
     text = FINDING_YAML.replace("project: infrastructure", "project: mepd") + (
         "check: python check.py\n"
-        "upstream:\n  - {name: Reaction-QM, doi: 10.5281/zenodo.18551029, license: CC-BY-4.0}\n"
+        "upstream:\n  - {name: Reaction-QM, doi: 10.5281/zenodo.18551029, license: CC-BY-4.0}\n  - {name: g-xTB, url: https://github.com/grimme-lab/g-xtb}\n"
         "mepd:\n  level_of_theory: g-xTB\n  software: [mepd 0.9, g-xTB 2.0.1]\n"
         "  sampling: the first 500 reactions in file order, not random\n"
     ).replace("upstream: []\n", "")

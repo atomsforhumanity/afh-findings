@@ -272,6 +272,7 @@ ${m.check ? `<tr><th>Check</th><td><code>${esc(m.check)}</code> recomputes the n
 ${Object.keys(m.profiles ?? {}).length ? `<tr><th>Rules met</th><td>core standard, ${Object.keys(m.profiles).map(esc).join(", ")}</td></tr>` : `<tr><th>Rules met</th><td>core standard</td></tr>`}
 ${f.doi ? `<tr><th>DOI</th><td><a href="https://doi.org/${esc(f.doi)}">${esc(f.doi)}</a></td></tr>` : ""}
 ${f.stacks_url ? `<tr><th>Write-up</th><td><a href="${esc(f.stacks_url)}">On The Stacks</a></td></tr>` : ""}
+${m.formerly?.length ? `<tr><th>Formerly</th><td>${m.formerly.map((x) => (/^https?:\/\//.test(x) ? `<a href="${esc(x)}">${esc(x)}</a>` : esc(x))).join("<br>")}</td></tr>` : ""}
 </table>
 <h2>Not tested</h2>
 <ul>${m.scope.not_tested.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
