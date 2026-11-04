@@ -6,8 +6,9 @@
     "embed": "node scripts/embed-static.mjs",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "typecheck": "npm run embed && tsc --noEmit",
-    "test": "vitest run"
+    "typecheck": "npm run embed && npm run fixture && tsc --noEmit",
+    "test": "vitest run",
+    "fixture": "uv run --project .. python ../scripts/make_worker_fixture.py test/fixtures/bucket.json"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "^1.5.1",
