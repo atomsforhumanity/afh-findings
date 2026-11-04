@@ -179,7 +179,7 @@ function footer(): string {
 <li><a href="/feed.xml">Atom feed</a></li><li><a href="/index.json">index.json</a> · <a href="/index.csv">csv</a></li>
 <li><a href="${REPO_URL}">Source ↗</a></li></ul></div>
 <div><h2>Atoms for Humanity</h2><ul>
-<li><a href="https://www.afh.org">afh.org ↗</a></li><li><a href="https://www.afh.org/work">Our work ↗</a></li>
+<li><a href="https://www.afh.org">afh.org ↗</a></li>
 <li><a href="https://github.com/atomsforhumanity">GitHub ↗</a></li></ul></div>
 </div>
 <div class="footer-bottom"><span>© ${year} Atoms for Humanity</span>
