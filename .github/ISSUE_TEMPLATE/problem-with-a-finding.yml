@@ -1,0 +1,22 @@
+name: Problem with a finding
+description: Something on findings.afh.org looks wrong, unclear, or can't be reproduced.
+body:
+  - type: input
+    id: finding
+    attributes:
+      label: Which finding and version?
+      description: For example F0012 v2. The title of this issue is filled in when you come from the finding's page.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's wrong?
+      description: A number that doesn't match the data, a step that doesn't rerun, a claim that goes further than the evidence, a broken link...
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: How did you find it?
+      description: Commands you ran, what you expected, what you got.

@@ -1,0 +1,6 @@
+# Profiles every finding in a project must pass, on top of the core standard.
+# Add a project or change its rules by pull request. Projects not listed here only need
+# the core standard.
+
+[mepd]
+profiles = ["mepd"]

@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "afh-findings",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "build": { "command": "node scripts/embed-static.mjs", "watch_dir": "../static" },
+  "routes": [{ "pattern": "findings.afh.org", "custom_domain": true }],
+  "workers_dev": false,
+  "r2_buckets": [{ "binding": "FINDINGS", "bucket_name": "afh-findings" }],
+  "vars": {
+    "SITE_URL": "https://findings.afh.org",
+    "FEEDBACK_URL": "https://github.com/atomsforhumanity/afh-findings/issues/new"
+  },
+  "observability": { "enabled": true }
+}

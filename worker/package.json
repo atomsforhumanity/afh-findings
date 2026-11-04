@@ -1,0 +1,19 @@
+{
+  "name": "afh-findings-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "embed": "node scripts/embed-static.mjs",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "npm run embed && tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.5.1",
+    "@cloudflare/workers-types": "^5.20261104.1",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0",
+    "wrangler": "^4.157.0"
+  }
+}

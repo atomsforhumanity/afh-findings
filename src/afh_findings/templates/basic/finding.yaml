@@ -1,0 +1,52 @@
+# The record for one finding. Only this file's shape is fixed; the page and data are yours.
+# Check it with `afh-findings check .` and look at it with `afh-findings preview .`.
+
+# The claim as one sentence, with its key number. Not a topic.
+title: GPU DFT costs 6x less than CPU DFT per single point for 50-200 atom systems on our hardware
+
+# The finding with its key numbers, in a few sentences.
+claim: >
+  Write two or three sentences that state the result with the numbers that matter,
+  and where it holds.
+
+authors:
+  - name: Your Name
+    orcid: 0000-0000-0000-0000   # optional, but please add it
+
+project: my-project              # lowercase tag, e.g. mepd, infrastructure
+kind: result                     # result | method | resource | informative-failure
+status: preliminary              # verified needs a `check` command that passes
+
+keywords: [example]
+
+scope:
+  # What this does not show. At least one honest entry.
+  not_tested:
+    - Systems larger than 200 atoms
+    - Other GPU models
+
+# The files behind the claim, or `data: {none: "why there are none"}`.
+data:
+  - path: data/results.csv
+    description: one row per calculation
+
+# The code that produced the numbers: files in this folder, or public repos at a commit
+# (https://github.com/org/repo@abc1234). Or `code: {none: "why"}`.
+code:
+  - path: reproduce/
+
+# Datasets and programs this builds on, with DOIs and licenses.
+upstream: []
+
+# Other findings this depends on, pinned to a version: [F0001/v3]
+builds_on: []
+
+# Optional: a command that recomputes the stated numbers from data/, run from a fresh
+# copy of the published files at publish time. Required for status: verified.
+# check: python check.py
+
+# Optional: the page to open (default index.html).
+# entry: index.html
+
+# Notes for yourself; never published.
+private: {}

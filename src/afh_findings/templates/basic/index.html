@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{FINDING_ID}}: your claim as a sentence</title>
+<style>
+  :root { --bg:#fdfdfc; --fg:#1d1d1b; --muted:#6b6b66; --rule:#e2e1dc; --accent:#2a5db0; --quote:#f3f2ee; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#161615; --fg:#e8e7e3; --muted:#9a9993; --rule:#33332f; --accent:#8ab4f8; --quote:#20201e; }
+  }
+  body { background:var(--bg); color:var(--fg); font:16px/1.6 system-ui,sans-serif; max-width:46rem; margin:2.5rem auto; padding:0 16px; }
+  h1 { font-size:1.6rem; line-height:1.25; }
+  h2 { margin-top:2.2rem; border-bottom:1px solid var(--rule); padding-bottom:.2rem; }
+  a { color:var(--accent); }
+  blockquote { background:var(--quote); margin:1.2rem 0; padding:.6rem 1rem; border-left:3px solid var(--accent); }
+  table { border-collapse:collapse; display:block; overflow-x:auto; font-size:.9rem; }
+  td, th { border:1px solid var(--rule); padding:.3rem .5rem; }
+  img { max-width:100%; }
+</style>
+</head>
+<body>
+<h1>{{FINDING_ID}}: your claim as a sentence</h1>
+
+<blockquote><strong>Finding.</strong> The claim with its numbers, as in finding.yaml.</blockquote>
+
+<h2>Background</h2>
+<p>The problem in plain words for someone outside the project, with links to read more.</p>
+
+<h2>Approach</h2>
+<p>What was done, on what, with which settings.</p>
+
+<h2>Results</h2>
+<p>What came out: short text, a table or a figure. Data: <a href="data/results.csv">data/results.csv</a>.</p>
+
+<h2>Not tested</h2>
+<ul><li>What this does not show.</li></ul>
+
+<h2>Reproducing it</h2>
+<p>How to check the numbers and rerun the work. Scripts are in <a href="reproduce/">reproduce/</a>.</p>
+</body>
+</html>
