@@ -7,7 +7,10 @@
   "build": { "command": "node scripts/embed-static.mjs", "watch_dir": "../static" },
   "routes": [{ "pattern": "findings.afh.org", "custom_domain": true }],
   "workers_dev": false,
-  "r2_buckets": [{ "binding": "FINDINGS", "bucket_name": "afh-findings" }],
+  "r2_buckets": [
+    // `wrangler dev --remote` reads the test bucket, so trial runs never touch real numbers.
+    { "binding": "FINDINGS", "bucket_name": "afh-findings", "preview_bucket_name": "afh-findings-test" }
+  ],
   "vars": {
     "SITE_URL": "https://findings.afh.org",
     "FEEDBACK_URL": "https://github.com/atomsforhumanity/afh-findings/issues/new"

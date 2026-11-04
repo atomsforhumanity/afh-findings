@@ -123,6 +123,10 @@ Then create R2 API tokens for publishers in the Cloudflare dashboard (R2 → Man
 *Object Read & Write*, limited to the `afh-findings` bucket). Set `FEEDBACK_URL` in
 `wrangler.jsonc` to show a "Report a problem" link.
 
+- **Rehearse** on the `afh-findings-test` bucket before anything irreversible: publish with
+  `AFH_FINDINGS_BUCKET=afh-findings-test afh-findings publish ...`, then view it with
+  `cd worker && npx wrangler dev --remote` (which reads the test bucket). Published versions in
+  the real bucket can't be taken back, and their numbers are used up.
 - **Retract** a wrong finding: `afh-findings status F0012 retract --reason "..."`. It stays readable.
 - **Withdraw** content that should never have been public:
   `afh-findings status F0012 withdraw --reason "..."`. The site answers 410 at once. The files
