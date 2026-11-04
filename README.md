@@ -17,6 +17,12 @@ afh-findings publish my-finding --revise F0012 --change corrected --summary "A t
 afh-findings status F0012 retract --reason "The benchmark set was mislabelled"
 ```
 
+## For agents
+
+The `findings` skill in [research-skills](https://github.com/atomsforhumanity/research-skills)
+(plugin `afh-qc`) teaches agents when a result is ready to be a finding and how to draft and
+publish one. Install the AFH skills as that repo's README describes.
+
 ## Setup for authors
 
 ```
