@@ -142,7 +142,12 @@ def cmd_publish(args: argparse.Namespace) -> int:
         return 1
     _print_issues(result.warnings)
     how = "resumed and finished" if result.resumed else "published"
-    print(f"{result.finding_id} v{result.version} {how}: {result.url}")
+    if cfg.store == "r2" and cfg.bucket == "afh-findings":
+        print(f"{result.finding_id} v{result.version} {how}: {result.url}")
+    else:  # a rehearsal: say where it went, not the public address it would have had
+        print(
+            f"{result.finding_id} v{result.version} {how} to {store.describe()} (not on the public site)"
+        )
     print(f"  {result.uploaded} files uploaded, {result.skipped} already there")
     return 0
 
