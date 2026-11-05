@@ -17,6 +17,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from afh_findings import __version__, bundle, checks, registry
 from afh_findings.config import Config
 from afh_findings.issues import Issue, warning
@@ -316,3 +318,107 @@ def verify(store: Store, finding_id: str, version: int | None = None) -> list[st
     elif hashlib.sha256(zipobj[0]).hexdigest() != zipsum[0].decode().split()[0]:
         problems.append("archive checksum mismatch")
     return problems
+
+
+# Keys of a published finding.json that come back into finding.yaml as they are.
+SOURCE_KEYS = (
+    "title",
+    "claim",
+    "authors",
+    "project",
+    "kind",
+    "status",
+    "keywords",
+    "scope",
+    "upstream",
+    "builds_on",
+    "supersedes",
+    "formerly",
+    "entry",
+    "check",
+    "license",
+)
+# Keys the tool writes at publish; never part of the author's record.
+PUBLISH_KEYS = {
+    "schema",
+    "id",
+    "version",
+    "published",
+    "publisher",
+    "change",
+    "profiles",
+    "tool",
+    "files",
+    "private_code",
+    "data",
+    "data_none",
+    "code",
+    "code_none",
+}
+
+
+def pull(
+    store: Store,
+    finding_id: str,
+    version: int | None,
+    dest: Path,
+    site_url: str = "https://findings.afh.org",
+) -> dict[str, Any]:
+    """Download a published version into `dest` with a finding.yaml, ready to edit and revise."""
+    index, _ = registry.load(store)
+    f = index["findings"].get(finding_id)
+    if f is None:
+        raise PublishError(f"{finding_id} is not published")
+    if f["state"] == "withdrawn":
+        raise PublishError(f"{finding_id} was withdrawn")
+    v = version or int(f["latest"])
+    if v not in {x["version"] for x in f["versions"]}:
+        raise PublishError(f"{finding_id} has no version {v}")
+    if dest.exists() and any(dest.iterdir()):
+        raise PublishError(f"{dest} exists and is not empty")
+    prefix = f"{finding_id}/v{v}/"
+    got = store.get(prefix + "finding.json")
+    if got is None:
+        raise PublishError(f"{prefix}finding.json is missing")
+    m = json.loads(got[0])
+    for entry in m["files"]:
+        if entry["path"] == "LICENSE.md":  # written again at publish
+            continue
+        obj = store.get(prefix + entry["path"])
+        if obj is None:
+            raise PublishError(f"{prefix}{entry['path']} is missing")
+        target = dest / entry["path"]
+        target.parent.mkdir(parents=True, exist_ok=True)
+        data = obj[0]
+        if target.suffix.lower() in bundle.PLACEHOLDER_SUFFIXES:
+            # Undo the two fills that name this exact version, so the next version gets its own.
+            text = data.decode("utf-8", errors="surrogateescape")
+            text = text.replace(f"{finding_id}-v{v}.zip", "{{FINDING_ID}}-v{{FINDING_VERSION}}.zip")
+            for site in (site_url.rstrip("/"), ""):
+                text = (
+                    text.replace(f"{site}/{finding_id}/v{v}/", "{{FINDING_URL}}") if site else text
+                )
+            data = text.encode("utf-8", errors="surrogateescape")
+        target.write_bytes(data)
+    record: dict[str, Any] = {k: m[k] for k in SOURCE_KEYS if m.get(k) not in (None, [], {})}
+    for key in ("data", "code"):
+        record[key] = m[key] if m[key] else {"none": m[f"{key}_none"] or "none"}
+    for key, value in m.items():  # profile blocks, such as mepd:
+        if key not in PUBLISH_KEYS and key not in SOURCE_KEYS:
+            record[key] = value
+    order = [*SOURCE_KEYS[:8], "data", "code", *SOURCE_KEYS[8:]]
+    record = {k: record[k] for k in order if k in record} | {
+        k: v for k, v in record.items() if k not in order
+    }
+    header = (
+        f"# Pulled from {finding_id} version {v} ({m['published'][:10]}). Edit this folder, then publish the\n"
+        f"# next version with:\n#   afh-findings publish <this folder> --revise {finding_id} "
+        '--change corrected|expanded|strengthened|weakened|revised --summary "what changed and why"\n'
+        "# The pages hold the number and version as they were filled in at publish; update any\n"
+        "# version text in them (or use {{FINDING_VERSION}}).\n"
+    )
+    dest.mkdir(parents=True, exist_ok=True)
+    (dest / "finding.yaml").write_text(
+        header + yaml.safe_dump(record, sort_keys=False, allow_unicode=True, width=100)
+    )
+    return {"finding_id": finding_id, "version": v, "files": len(m["files"]), "dest": str(dest)}

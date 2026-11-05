@@ -13,6 +13,7 @@ afh-findings new my-finding --project infrastructure   # optional starting templ
 afh-findings check my-finding                           # the core standard + any profiles
 afh-findings preview my-finding                         # http://127.0.0.1:8000/F0000/
 afh-findings publish my-finding                         # → https://findings.afh.org/F0012/
+afh-findings pull F0012 my-finding                      # a published version, with a finding.yaml, to revise
 afh-findings publish my-finding --revise F0012 --change corrected --summary "A timing was counted twice"
 afh-findings status F0012 retract --reason "The benchmark set was mislabelled"
 ```

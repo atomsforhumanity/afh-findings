@@ -6,10 +6,11 @@ import argparse
 import json
 import shutil
 import sys
+import tempfile
 from importlib import resources
 from pathlib import Path
 
-from afh_findings import __version__, checks, config, preview, publish, registry
+from afh_findings import __version__, bundle, checks, config, preview, publish, registry
 from afh_findings.issues import Issue
 from afh_findings.store import open_store
 
@@ -62,9 +63,25 @@ def cmd_check(args: argparse.Namespace) -> int:
     if checked.ok:
         print(f"OK ({profiles}): {counts['warnings']} warning(s), {len(checked.files)} files")
         if checked.source and checked.source.core.get("check") and args.run_check:
-            ok, out = checks.run_check_command(
-                Path(args.dir).resolve(), checked.source.core["check"]
-            )
+            # Exactly as at publish: from a fresh copy of the files that would be published
+            # (no finding.yaml, generated files added).
+            with tempfile.TemporaryDirectory(prefix="afh-findings-check-") as tmp:
+                built = bundle.build(
+                    checked.source,
+                    checked.files,
+                    Path(tmp) / "version",
+                    finding_id="F0000",
+                    version=1,
+                    published=registry.now(),
+                    publisher=cfg.publisher,
+                    change=None,
+                    profiles={},
+                    private_code=checked.private_code,
+                    affiliation=cfg.affiliation,
+                    site_url=cfg.site_url,
+                    tool_version=f"afh-findings {__version__}",
+                )
+                ok, out = checks.run_check_command(built.root, checked.source.core["check"])
             print(out)
             return 0 if ok else 1
         return 0
@@ -199,6 +216,25 @@ def cmd_reindex(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_pull(args: argparse.Namespace) -> int:
+    fid, _, v = args.ref.partition("/v")
+    try:
+        cfg = _cfg(args)
+        info = publish.pull(
+            open_store(cfg), fid, int(v) if v else None, Path(args.dir), cfg.site_url
+        )
+    except publish.PublishError as exc:
+        print(f"Not pulled: {exc}", file=sys.stderr)
+        return 1
+    print(
+        f"{info['finding_id']} v{info['version']} is in {info['dest']} with a finding.yaml to edit."
+    )
+    print(
+        f'  Then: afh-findings publish {args.dir} --revise {info["finding_id"]} --change <type> --summary "..."'
+    )
+    return 0
+
+
 def cmd_verify(args: argparse.Namespace) -> int:
     store = open_store(_cfg(args))
     fid, _, v = args.ref.partition("/v")
@@ -280,6 +316,13 @@ def parser() -> argparse.ArgumentParser:
     s = sub.add_parser("show", help="show one finding's registry entry")
     s.add_argument("id")
     s.set_defaults(func=cmd_show)
+
+    s = sub.add_parser(
+        "pull", help="download a published version, with a finding.yaml, to revise it"
+    )
+    s.add_argument("ref", metavar="FNNNN[/vN]")
+    s.add_argument("dir")
+    s.set_defaults(func=cmd_pull)
 
     s = sub.add_parser("verify", help="download a published version and check its checksums")
     s.add_argument("ref", metavar="FNNNN[/vN]")

@@ -187,3 +187,38 @@ def test_skip_profiles_is_recorded(tmp_path, cfg, store):
     r = pub(b, cfg, store, skip_profiles=True)
     manifest = json.loads(store.get(f"{r.finding_id}/v1/finding.json")[0])
     assert manifest["profiles"] == {} and manifest["mepd"]["level_of_theory"] == "g-xTB"
+
+
+def test_pull_then_revise(tmp_path, cfg, store):
+    b = make_bundle(tmp_path / "b", yaml_text=FINDING_YAML + "formerly: [old F0003 version 2]\n")
+    pub(b, cfg, store)
+    dest = tmp_path / "pulled"
+    info = publish.pull(store, "F0001", None, dest)
+    assert (
+        info["version"] == 1
+        and (dest / "finding.yaml").is_file()
+        and (dest / "data/results.csv").is_file()
+    )
+    assert not (dest / "finding.json").exists() and not (dest / "LICENSE.md").exists()
+    assert "F0001-v1.zip" not in (dest / "index.html").read_text()
+    assert checks.check_bundle(dest, cfg, network=False).ok
+    r = pub(
+        dest, cfg, store, revise="F0001", change={"type": "expanded", "summary": "more molecules"}
+    )
+    old = json.loads(store.get("F0001/v1/finding.json")[0])
+    new = json.loads(store.get("F0001/v2/finding.json")[0])
+    for key in (
+        "title",
+        "claim",
+        "authors",
+        "scope",
+        "data",
+        "code",
+        "formerly",
+        "license",
+        "keywords",
+    ):
+        assert new[key] == old[key], key
+    assert r.version == 2
+    with pytest.raises(publish.PublishError, match="not empty"):
+        publish.pull(store, "F0001", 1, dest)
